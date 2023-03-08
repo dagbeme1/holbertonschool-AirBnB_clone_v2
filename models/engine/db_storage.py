@@ -43,6 +43,10 @@ class DBStorage:
         return {"{}.{}".format(type(obj).__name__,
                                obj.id): obj for obj in obj_lst}
 
+    def new(self, obj):
+        """Adds new object to database session"""
+        self.__session.add(obj)
+
     def save(self):
         '''
             Commit all changes of current database session
