@@ -1,32 +1,44 @@
 #!/usr/bin/python3
-from os import getenv
-from sqlalchemy import create_engine, MetaData
+"""This module defines a class to manage file storage for hbnb clone"""
+from sqlalchemy import create_engine
+from datetime import datetime
 from sqlalchemy.orm import sessionmaker, scoped_session
-import models
+from models.base_model import BaseModel, Base
+from models.user import User
+from models.place import Place
 from models.state import State
 from models.city import City
-from models.base_model import Base
+from models.amenity import Amenity
+from models.review import Review
+from os import getenv
+
+classes = {
+            'User': User, 'Place': Place,
+            'State': State, 'City': City, 'Amenity': Amenity,
+            'Review': Review
+            }
 
 
-class DBStorage:
-    '''
-        Create SQLalchemy database
-    '''
+class DBStorage():
     __engine = None
     __session = None
 
     def __init__(self):
-        '''
-            Create engine and link to MySQL databse (hbnb_dev, hbnb_dev_db)
-        '''
+        """Creates engine"""
         user = getenv("HBNB_MYSQL_USER")
-        pwd = getenv("HBNB_MYSQL_PWD")
+        password = getenv("HBNB_MYSQL_PWD")
         host = getenv("HBNB_MYSQL_HOST")
-        db = getenv("HBNB_MYSQL_DB")
-        envv = getenv("HBNB_ENV", "none")
-        self.__engine = create_engine('mysql+mysqldb://{}:{}@{}/{}'.format(
-            user, pwd, host, db), pool_pre_ping=True)
-        if envv == 'test':
+        database = getenv("HBNB_MYSQL_DB")
+        env = getenv("HBNB_ENV")
+
+        self.__engine = create_engine(
+             "mysql+mysqldb://{}:{}@{}/{}".format(user,
+                                                  password,
+                                                  host,
+                                                  database),
+             pool_pre_ping=True)
+
+        if env == "test":
             Base.metadata.drop_all(self.__engine)
 
     def all(self, cls=None):
@@ -48,29 +60,21 @@ class DBStorage:
         self.__session.add(obj)
 
     def save(self):
-        '''
-            Commit all changes of current database session
-        '''
+        """Commits changes to database session"""
         self.__session.commit()
 
     def delete(self, obj=None):
-        '''
-            Delete from current database session
-        '''
+        """deletes current instance from the storage"""
         if obj is not None:
             self.__session.delete(obj)
+        else:
+            pass
 
     def reload(self):
-        '''
-            Commit all changes of current database session
-        '''
-        self.__session = Base.metadata.create_all(self.__engine)
-        factory = sessionmaker(bind=self.__engine, expire_on_commit=False)
-        Session = scoped_session(factory)
-        self.__session = Session()
+        """Creates current database session"""
+        Base.metadata.create_all(self.__engine)
+        self.__session = scoped_session(sessionmaker(bind=self.__engine,
+                                                     expire_on_commit=False))
 
-    def close(self):
-        '''
-            Remove private session attribute
-        '''
-        self.__session.close()
+        def close(self):
+            self.__session.close()
