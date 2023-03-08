@@ -30,33 +30,18 @@ class DBStorage:
             Base.metadata.drop_all(self.__engine)
 
     def all(self, cls=None):
-        '''
-            Query current database session
-        '''
-        db_dict = {}
-
-        if cls != "":
-            objs = self.__session.query(models.classes[cls]).all()
-            for obj in objs:
-                key = "{}.{}".format(obj.__class__.__name__, obj.id)
-                db_dict[key] = obj
-            return db_dict
+        """Returns a dictionary of models currently in storage"""
+        cls_lst = ["Review", "City", "State", "User", "Place", "Amenity"]
+        obj_lst = []
+        if cls is None:
+            for cls_type in cls_lst:
+                obj_lst.extend(self.__session.query(cls_type).all())
         else:
-            for k, v in models.classes.items():
-                if k != "BaseModel":
-                    objs = self.__session.query(v).all()
-                    if len(objs) > 0:
-                        for obj in objs:
-                            key = "{}.{}".format(obj.__class__.__name__,
-                                                 obj.id)
-                            db_dict[key] = obj
-            return db_dict
-
-    def new(self, obj):
-        '''
-            Add object to current database session
-        '''
-        self.__session.add(obj)
+            if type(cls) == str:
+                cls = eval(cls)
+            obj_lst = self.__session.query(cls).all()
+        return {"{}.{}".format(type(obj).__name__,
+                               obj.id): obj for obj in obj_lst}
 
     def save(self):
         '''
