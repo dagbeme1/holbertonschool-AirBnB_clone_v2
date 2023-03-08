@@ -1,47 +1,36 @@
 #!/usr/bin/python3
 from os import getenv
-from models.base_model import Base, BaseModel
-from models.review import Review
-from models.city import City
-from models.state import State
-from models.amenity import Amenity
-from models.user import User
-from models.place import Place
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker, scoped_session
+import models
+from models.state import State
+from models.city import City
+from models.base_model import Base
 
 
 class DBStorage:
+    '''
+        Create SQLalchemy database
+    '''
     __engine = None
     __session = None
 
     def __init__(self):
-        self.__engine = create_engine("mysql+mysqldb://{}:{}@{}/{}".format(
-                                            getenv('HBNB_MYSQL_USER'),
-                                            getenv('HBNB_MYSQL_PWD'),
-                                            getenv('HBNB_MYSQL_HOST'),
-                                            getenv('HBNB_MYSQL_DB')),
-                                      pool_pre_ping=True)
-        if getenv('HBNB_ENV') == 'test':
+        '''
+            Create engine and link to MySQL databse (hbnb_dev, hbnb_dev_db)
+        '''
+        user = getenv("HBNB_MYSQL_USER")
+        pwd = getenv("HBNB_MYSQL_PWD")
+        host = getenv("HBNB_MYSQL_HOST")
+        db = getenv("HBNB_MYSQL_DB")
+        envv = getenv("HBNB_ENV", "none")
+        self.__engine = create_engine('mysql+mysqldb://{}:{}@{}/{}'.format(
+            user, pwd, host, db), pool_pre_ping=True)
+        if envv == 'test':
             Base.metadata.drop_all(self.__engine)
 
-    def reload(self):
-        Base.metadata.create_all(self.__engine)
-        the_session = sessionmaker(bind=self.__engine, expire_on_commit=False)
-        Session = scoped_session(the_session)
-        self.__session = Session()
-
-    def new(self, obj):
-        self.__session.add(obj)
-
-    def save(self):
-        self.__session.commit()
-
-    def delete(self, obj=None):
-        if obj is not None:
-            self.__session.delete(obj)
-
     def all(self, cls=None):
+        """Returns a dictionary of models currently in storage"""
         cls_lst = ["Review", "City", "State", "User", "Place", "Amenity"]
         obj_lst = []
         if cls is None:
@@ -54,8 +43,34 @@ class DBStorage:
         return {"{}.{}".format(type(obj).__name__,
                                obj.id): obj for obj in obj_lst}
 
-    def close(self):
-        self.__session.close()
+    def new(self, obj):
+        """Adds new object to database session"""
+        self.__session.add(obj)
 
-    def total(self):
-        return len(self.__session.query(Review).all())
+    def save(self):
+        '''
+            Commit all changes of current database session
+        '''
+        self.__session.commit()
+
+    def delete(self, obj=None):
+        '''
+            Delete from current database session
+        '''
+        if obj is not None:
+            self.__session.delete(obj)
+
+    def reload(self):
+        '''
+            Commit all changes of current database session
+        '''
+        self.__session = Base.metadata.create_all(self.__engine)
+        factory = sessionmaker(bind=self.__engine, expire_on_commit=False)
+        Session = scoped_session(factory)
+        self.__session = Session()
+
+    def close(self):
+        '''
+            Remove private session attribute
+        '''
+        self.__session.close()
